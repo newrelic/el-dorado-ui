@@ -1,0 +1,39 @@
+%p{style:'max-width:640px;'}
+  El Dorado has been configured to find and apply a large number of queries.
+  Here we show some indication of success for queries we can run without further input.
+
+%h3 summary
+%ul
+  - problems = @report.select{|test| test[:error] != ''}
+  - if problems.empty?
+    %li
+      %span{style:'color:green'}
+        no problems
+  - problems.each do |test|
+    %li
+      %a{href:'#'+test[:slug]}
+        #{test[:slug]} ⇒ 
+      %span{style:'color:red'}
+        #{test[:error]}
+
+%h3 details
+%table.table.table-hover
+  - @report.each do |test|
+    %tr{id:test[:slug]}
+      %td
+        %a{href:'/'+test[:slug]+"?#{sample_args(test[:query])}"}
+          #{test[:slug]}
+        %br
+        #{test[:query]['title']}
+        %br
+        - if test[:duration]
+          #{test[:columns].to_a} columns
+          %br
+          #{test[:rows].to_s} rows
+          %br
+          #{(test[:duration]||0).round(3)} seconds
+          %br
+        %span{style:'color:red'}
+          #{test[:error]}
+      %td
+        %pre #{test[:query]['query']}

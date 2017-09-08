@@ -1,0 +1,70 @@
+!!!
+
+%head
+  %link{rel: 'stylesheet', href: 'https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css', integrity:"sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u", crossorigin:"anonymous"}
+  %link{rel: 'icon', href:'/favicon.png'}
+  :css
+    body {
+      margin-top: 70px;
+    }
+    object {
+      max-width:100%;
+    }
+    / https://teamtreehouse.com/community/how-do-you-make-a-svg-clickable
+    a.svg:after {
+      content: ""; 
+      position: absolute; 
+      top: 0; 
+      right: 0; 
+      bottom: 0; 
+      left: 0;
+    }
+    .recommended {
+      background-color:#f5f5f5;
+      border:1px solid #ccc;
+      border-radius:4px;
+    }
+    td {
+      max-width:500px;
+    }
+%body
+  %nav.navbar.navbar-inverse.navbar-fixed-top
+    .container
+      .navbar-header
+        %a.navbar-brand{href: "/"} El Dorado
+      %form.navbar-form.navbar-right{:role => "search", :controller => 'welcome', :action => '/find', :method => 'get' }
+        .form-group
+          %input.form-control{:placeholder => "Search", :type => "text", name: "comp"}
+
+  %script{src: "https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" }
+  %script{src: "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js", integrity:"sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa", crossorigin:"anonymous"}
+
+  .container
+    = yield
+
+  :javascript
+    $('.editable').keydown(run)
+
+    function run (e) {
+      if(e.keyCode==13 && !e.shiftKey) {
+        e.preventDefault()
+        var key = e.target.id
+        var val = $(e.target).text()
+        window.location = window.location.origin + '/run?' + revise(key, val)
+      }
+    }
+
+    function revise (key, val) {
+      var params = {}
+      var q = document.URL.replace(/\+/g,'%20').split('?')[1];
+      if(q != undefined) {
+        q = q.split('&')
+        var d = decodeURIComponent
+        for(var i = 0; i < q.length; i++) {
+          var h = q[i].split('=')
+          params[d(h[0])] = d(h[1])
+        }
+      }
+      params[key] = val
+      return $.param(params)
+    }

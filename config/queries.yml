@@ -1,0 +1,278 @@
+
+graph_database:
+  title: 'Graph Database'
+  menu:
+  - [about, About]
+  - [sources, Sources overview]
+  - [schema_with_sources, Schema with sources]
+  - [catalog, Catalog of queries]
+  - [new, Create new query]
+  - [smoketest, Run query tests]
+
+new:
+  title: New Query
+  description: >
+    Edit this example query to find and draw relationships.
+    Match a pattern of nodes and relations aginst the graph database.
+    Add conditions to select a subset of matches.
+    Return fields or properties of nodes and relations.
+    Draw a directed graph with arcs for each row of the result.
+    See docs <a href="https://neo4j.com/docs/cypher-refcard/current/">cypher</a>,
+    <a href="http://www.graphviz.org/content/dot-language">dot</a>.
+  query: |
+    match (n)-->(m)
+    where rand() < 0.01
+    return
+      labels(n) as n,
+      labels(m) as m,
+      count(*) as c
+    order by c
+  dot: |
+    digraph {
+      "{n}" -> "{m}" [label={c}]
+    }
+
+nodes:
+  title: "Node Metadata by Labels"
+  query: |
+    match (o)
+    return
+      distinct head(labels(o)) as Node,
+      count(o) as Count
+    order by Count desc
+  alias:
+    Node: label
+
+relations:
+  title: "Relation Metadata by Type"
+  query: |
+    match ()-[r]->()
+    return
+      distinct type(r) as Relation,
+      count(r) as Count
+    order by Count desc
+  alias:
+    Relation: type
+
+find:
+  title: "Search Result"
+  description: >
+    We search all graph nodes for a loose name match.
+    Multiple words must be in order.
+    Acronyms in all-caps match whole words starting with each letter.
+  query: |
+    match (o)
+    where lower(o.name) =~ {regex}
+    optional match (o)-[r]-(x)
+    return
+      head(labels(o)) as Label,
+      collect(distinct o.name) as Node,
+      collect(distinct r.source) as Source
+    order by size(Node)
+  args:
+    comp: insights
+    regex: '.*insights.*'
+
+node_detail:
+  title: "Node Metadata Detail"
+  query: |
+    match (n)
+    where head(labels(n)) = {label}
+    with
+      distinct head(labels(n)) as Nodes
+    optional match (n)-[r]-(x)
+    where head(labels(n)) = Nodes
+    return
+      Nodes,
+      count(*) as Count,
+      type(r) as Relation,
+      collect(distinct r.source) as Source
+    order by Count desc
+  args:
+    label: PERSON
+  alias:
+    Nodes: label
+    Relation: type
+
+relation_detail:
+  title: "Relation Metadata Detail"
+  query: |
+    match (a)-[r]->(b)
+    where type(r) = {type}
+    return
+      distinct head(labels(a)) as This,
+      type(r) as Relation,
+      collect(distinct head(labels(b))) as That,
+      count(r) as Count,
+      collect(distinct r.source) as Source
+  args:
+    type: ARCHITECT
+  alias:
+    This: label
+    Relation: type
+    That: label
+
+label_name_detail:
+  title: Named Node and Metadata Details
+  query: |
+    match (n)
+    where head(labels(n)) = {label} and n.name = {name}
+    optional match (n)-[r]-(m)
+    return
+      n.name as Name,
+      count(n) as Count,
+      type(r) as Relation,
+      collect(distinct head(labels(m))) as Label,
+      collect(distinct r.source) as Source
+    order by Count desc
+  args:
+    label: TEAM
+    name: Insights
+
+schema_with_sources:
+  title: "Schema with Sources"
+  description: >
+    We show here nodes we have imported (green boxes),
+    the relations we've discovered between them (solid lines),
+    and the sources from which we have extracted this information (dotted lines).
+  query: |
+    match (n)-[r]->(m)
+    return distinct
+      r.source as Source,
+      type(r) as Type,
+      head(labels(n)) as From,
+      head(labels(m)) as To
+    order by Source
+  dot: |
+    strict digraph {
+      rankdir=LR
+      node [shape=box style=filled, fillcolor=palegreen]
+      "{Source}" [shape=plaintext fillcolor=white URL="/source_explain?source={Source}"]
+      "{From}" [URL="/schema_node_detail?label={From}"]
+      "{To}" [URL="/schema_node_detail?label={To}"]
+      "{Type}{To}" [label="{Type}" shape=plaintext fillcolor=white]
+      "{From}" -> "{Type}{To}"
+      "{Type}{To}" -> "{To}"
+      "{Source}" -> "{Type}{To}" [style=dotted arrowhead=none]
+    }
+  alias:
+    From: label
+    To: label
+
+schema_node_detail:
+  title: "Schema Related to a Node"
+  description: >
+    We show here nodes related to one particular node (green boxes),
+    the relations we've discovered between them (solid lines),
+    and the sources from which we have extracted this information (dotted lines).
+  query: |
+    match (n)-[r]->(m)
+    where (head(labels(n)) = {label}) or (head(labels(m)) = {label})
+    return distinct
+      r.source as Source,
+      type(r) as Type,
+      head(labels(n)) as From,
+      head(labels(m)) as To
+    order by Source
+  args:
+    label: TEAM
+  alias:
+    From: label
+    To: label
+  dot: |
+    strict digraph {
+      rankdir=LR
+      node [shape=box style=filled, fillcolor=palegreen]
+      "{Source}" [shape=plaintext fillcolor=white URL="/source_explain?source={Source}"]
+      "{From}" [URL="/schema_node_detail?label={From}"]
+      "{To}" [URL="/schema_node_detail?label={To}"]
+      "{Type}{To}" [label="{Type}" shape=plaintext fillcolor=white]
+      "{From}" -> "{Type}{To}"
+      "{Type}{To}" -> "{To}"
+      "{Source}" -> "{Type}{To}" [style=dotted arrowhead=none]
+    }
+
+sources:
+  title: Sources Overview
+  description: >
+    We retrieve metadata from a variety of sources using a variety of methods.
+    Most extractions are run daily but this varies when there are manual steps.
+    Source information is attached to relations between nodes in the graph database.
+    See <a href="/schema_with_sources">Schema with Sources</a> for this in diagram form.
+  query: |
+    match (e:EXPLAIN)
+    with e
+    optional match ()-[r]->() where r.source = e.name
+    return
+      e.name as Source,
+      e.run as Run,
+      count(r) as Relations,
+      e.description as Description,
+      e.links as Links
+    order by Relations
+
+source_explain:
+  title: Source Explained
+  description: >
+    Here we describe one source from which we have extracted data loaded into this database.
+    We provide links back to these sources where they are available and links to our own source code that performs the extractions.
+  query: |
+    match ()-[r {source: {source}}]-()
+    with collect(distinct type(r)) as Type
+    match (e:EXPLAIN {name: {source}})
+    return
+      e.name as Source,
+      e.run as Run,
+      Type,
+      e.description as Description,
+      e.links as Links
+  args:
+    source: confluence
+
+rules:
+  title: "Rules Mapping INSTANCE to SERVICE"
+  query: |
+    match (i:INSTANCE)-[r:IMPLEMENTS]->(s:SERVICE)
+    optional match (s)<--(t:TEAM)
+    return
+      r.rule as Rule,
+      count(distinct i.name + " ⇒ " + s.name) as Matches,
+      count(distinct t.name) as Teams
+    order by Matches desc
+
+rules_detail:
+  title: "Rule Details, Mapping INSTANCE to SERVICE"
+  query: |
+    match (i:INSTANCE)-[r:IMPLEMENTS]->(s:SERVICE)
+    where r.rule = {rule}
+    optional match (s)<--(t:TEAM)
+    optional match (t)-[:ARCHITECT]->(a:PERSON)
+    return
+      r.rule as Rule,
+      s.name as Service,
+      collect(distinct i.name) as Instance,
+      t.name as Team,
+      a.name as Architect
+    order by Team
+  args:
+    rule: partial tm
+
+links:
+  title: "Collected Links for all Nodes"
+  query: |
+    match (n)
+    where exists(n.links)
+    return
+      head(labels(n)) as Label,
+      n.name as Node,
+      n.links as Links
+    order by Node
+
+errors:
+  title: ETL Transform Errors
+  query: |
+    match (e:ERROR)
+    return
+      e.name as Source,
+      e.message as Error,
+      e.backtrace as Backtrace

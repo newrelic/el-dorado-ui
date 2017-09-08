@@ -1,0 +1,9 @@
+- yaml.each do |slug, menu|
+  - if menu['menu']
+    %h3= menu['title']
+    %ul
+      - menu['menu'].each do |tuple|
+        %li
+          %h4
+            %a{ href: '/' + tuple[0] }= tuple[1]
+    %hr

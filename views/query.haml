@@ -1,0 +1,40 @@
+%h2= @query['title']
+%p{style:'max-width:640px;'}= (@query['description']||'').gsub(/\[(https?:.*?) (.+?)\]/, '<a href="\1">\2</a>')
+
+- @params.each do |key, value|
+  %p
+    %span.label.label-info.text-uppercase.text-small= key
+    = value
+
+%pre{id:'query', class:'editable', title: "neo4j query\nfor this page", contenteditable:true}
+  %code= yamlify(@query).gsub(/&/,'&amp;').gsub(/</,'&lt;')
+
+- if @error
+  %pre
+    %code= @error.gsub(/&/,'&amp;').gsub(/</,'&lt;')
+
+- recommended do |slug, query|
+  %li.list-group-item.recommended{title: "recommended\nnext queries"}
+    %a{href: "/#{slug}"}= query['title']
+    ⇒
+    = outputs(query).join(', ')
+
+- if @svg
+  %a{href:'#', class:'svg'}
+  %embed{style: 'max-width: 100%', src: "data:image/svg+xml;utf8,#{@svg}"}
+
+- if @results && @results.first
+  - rows = 0
+  %table.table.table-hover
+    %thead
+      %tr
+        - @columns.each do |h|
+          %th{title: label(@query,h)}= h
+    %tbody
+      - @results.each do |r|
+        - rows += 1
+        %tr{title: "result row #{rows}"}
+          - @columns.each do |c|
+            %td= formatted_value(r[c.to_sym], c, r)
+- else
+  %p.text-muted No results found for query

@@ -1,0 +1,14 @@
+%table
+  %tr
+    %td{style: 'vertical-align:top; padding:20px;'}
+      %h3 Purpose
+      %p
+        Eric Evans writes, "To plot strategy, we need a realistic, large-scale view of model development extending across our project and others we integrate with."
+        %a{href:'concept-map-pattern.pdf', target:'_blank'} pdf
+      %p
+        We construct this large-scale view by integrating numerous data sources describing what we deploy, how we build what we deploy, and, how we organize to build our products.
+    %td{style: 'vertical-align:top; padding:20px;'}
+      %h3 Updates
+      %p
+        We update data from our sources on a daily basis with a batch job that runs at noon.
+        We extract data from some sources at 8:00 am which leaves us time to check the data before the update.
