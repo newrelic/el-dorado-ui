@@ -1,6 +1,7 @@
 # El Dorado UI
 
 This is a Sinatra app that provides a UI and canned queries for El Dorado.
+Learn more about this project at http://ddd.ward.wiki.org/
 
 ## Running Locally
 
@@ -22,3 +23,7 @@ the database connection string with the GRAPHDBURL environment variable.
 ## License
 
 El Dorado UI is licensed under the __MIT License__.  See [MIT-LICENSE](https://github.com/newrelic/el-dorado-ui/blob/master/MIT-LICENSE) for full text.
+
+## Contributions
+
+You are welcome to send pull requests to us - however, by doing so you agree that you are granting New Relic a non-exclusive, non-revokable, no-cost license to use the code, algorithms, patents, and ideas in that code in our products if we so choose. You also agree the code is provided as-is and you provide no warranties as to its fitness or correctness for any purpose.
