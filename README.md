@@ -22,8 +22,4 @@ the database connection string with the GRAPHDBURL environment variable.
 
 ## License
 
-El Dorado UI is licensed under the __MIT License__.  See [MIT-LICENSE](https://github.com/newrelic/el-dorado-ui/blob/master/MIT-LICENSE) for full text.
-
-## Contributions
-
-You are welcome to send pull requests to us - however, by doing so you agree that you are granting New Relic a non-exclusive, non-revokable, no-cost license to use the code, algorithms, patents, and ideas in that code in our products if we so choose. You also agree the code is provided as-is and you provide no warranties as to its fitness or correctness for any purpose.
+Copyright [2017] New Relic, Inc.  Licensed under the Apache License, version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, either express or implied. 
