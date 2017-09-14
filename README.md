@@ -1,6 +1,6 @@
 # El Dorado UI
 
-This is a Sinatra app that provides a UI and canned queries for El Dorado, a enterprise structure warehouse.
+This is a Sinatra app that provides a UI and canned queries for El Dorado, an enterprise structure warehouse.
 The web user can retreive results from a menu of queries or author new ad-hoc queries interactively.
 Results are in the form of tables or diagrams both of which can hyperlink to related queries.
 
