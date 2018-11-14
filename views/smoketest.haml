@@ -12,7 +12,7 @@
   - problems.each do |test|
     %li
       %a{href:'#'+test[:slug]}
-        #{test[:slug]} ⇒ 
+        #{test[:slug]} ⇒
       %span{style:'color:red'}
         #{test[:error]}
 
@@ -37,3 +37,7 @@
           #{test[:error]}
       %td
         %pre #{test[:query]['query']}
+        - if test[:query]['sample']
+          %pre #{eval_sample(test[:query]['sample'])}
+        - elsif test[:query]['args']
+          %pre #{test[:query]['args']}

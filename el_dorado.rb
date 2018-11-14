@@ -11,6 +11,20 @@ class ElDorado < Sinatra::Base
   end
 
   get '/catalog' do
+    @yaml = yaml
+    haml :catalog
+  end
+
+  get '/catalog/:category' do |category|
+    nested = {}; nest = {}
+    yaml.each do |k, v|
+      if v['query'].nil?
+        nest = nested[k] = {k => v}
+      else
+        nest[k] = v
+      end
+    end
+    @yaml = nested[category] || yaml
     haml :catalog
   end
 
@@ -25,29 +39,26 @@ class ElDorado < Sinatra::Base
     haml :query
   end
 
-  get '/find' do
+  get '/search' do
     comp = params['comp']||''
-    params['regex'] = comp.downcase.gsub(/^|$| /, '.*')
-    params['regex'] += "|#{comp.downcase.split('').join('.*[ _-]')}.*" if comp =~ /^[A-Z]+$/
-    run 'find'
-    haml :query
+    regex = comp.downcase.gsub(/^|$| /, '.*')
+    regex += "|#{comp.downcase.split('').join('.*[ _-]')}.*" if comp =~ /^[A-Z]+$/
+    redirect "/schema_with_sources?regex=#{regex}"
   end
 
   get '/run' do
     tip = 'Ad hoc query and graph. With power comes responsibility.
       See docs [https://neo4j.com/docs/cypher-refcard/current/ cypher],
       [http://www.graphviz.org/content/dot-language dot]'
+    unless params['query']
+      body '400: No Query Provided'
+      halt 400
+    end
     query = deyamlify(params['query']).merge({'title' => 'Run Query', 'description' => tip})
     run 'run', query
     dotplot query
+    visplot query
     haml :query
-  end
-
-  get '/download' do
-    query = deyamlify(params['query']).merge({'title' => 'Run Query'})
-    run 'run', query
-    content_type :json
-    JSON.pretty_generate decypher @results
   end
 
   get '/smoketest' do
@@ -55,9 +66,9 @@ class ElDorado < Sinatra::Base
     count = 0
     queries.each do |slug, query|
       count += 1
-      if inputs(query).length == 0 || !query['args'].nil?
+      if inputs(query).length == 0 || !query['args'].nil? || !query['sample'].nil?
         start = Time.now
-        run slug, query, query['args']||{}
+        run slug, query, eval_sample(query['sample'])||query['args']||{}
         # run slug, query
         duration = Time.now - start
         errors = @error ||
@@ -77,7 +88,7 @@ class ElDorado < Sinatra::Base
         @report << {
           slug: slug,
           query: query,
-          error: 'missing sample args'
+          error: 'missing sample args or sample query'
         }
       end
       # break if count > 3
@@ -85,15 +96,11 @@ class ElDorado < Sinatra::Base
     haml :smoketest
   end
 
-  get '/:query' do |slug|
-    if queries[slug]
-      run slug
-      dotplot queries[slug]
-    else
-      body "<center><h1>404: query not found</h1>See <a href=/catalog>Catalog</a>"
-      halt 404
-    end
-    haml :query
+  get '/download' do
+    query = deyamlify(params['query']).merge({'title' => 'Run Query'})
+    run 'run', query
+    content_type :json
+    JSON.pretty_generate decypher @results
   end
 
   get '/download/:query' do |slug|
@@ -107,8 +114,81 @@ class ElDorado < Sinatra::Base
     JSON.pretty_generate decypher @results
   end
 
+  get '/csv' do
+    query = deyamlify(params['query']).merge({'title' => 'Run Query'})
+    run 'run', query
+    content_type :csv
+    csv_generate decypher @results
+  end
+
+  get '/csv/:query' do |slug|
+    if queries[slug]
+      run slug
+    else
+      body "404: query not found"
+      halt 404
+    end
+    content_type :csv
+    csv_generate decypher @results
+  end
+
+  get '/dot' do
+    query = deyamlify(params['query']).merge({'title' => 'Run Query'})
+    run 'run', query
+    dotify query['dot']
+  end
+
+  get '/dot/:query' do |slug|
+    if (query = queries[slug]) && (dot = query['dot'])
+      run slug
+    else
+      body "404: query not found"
+      halt 404
+    end
+    dotify dot
+  end
+
+
+  post '/cypher' do
+    request.body.rewind
+    query = JSON.parse request.body.read
+    query['params'] = {} if query['params'].nil?
+    run 'api', query, query['params']
+    content_type :json
+    if @error.nil?
+      JSON.pretty_generate decypher @results
+    else
+      status 400
+      JSON.pretty_generate({error: @error})
+    end
+  end
+
+  get '/:query' do |slug|
+    if queries[slug]
+      run slug
+      dotplot queries[slug]
+    else
+      body "<center><h1>404: query not found</h1>See <a href=/catalog>Catalog</a>"
+      halt 404
+    end
+    haml :query
+  end
+
 
   helpers do
+
+    def eval_sample match
+      return nil unless match
+
+      result = neo4j.query(match)
+
+      return_value = {}
+
+      result.first.to_h.each do |k,v|
+        return_value[k.to_s] = v
+      end
+      return return_value
+    end
 
     def yamldef query, field
       return '' unless query[field]
@@ -126,6 +206,17 @@ class ElDorado < Sinatra::Base
         YAML.load(string)
       else
         {'query' => string}
+      end
+    end
+
+    def csv_generate table
+      cols = table[0].keys
+      puts cols.inspect
+      CSV.generate do |csv|
+        csv << cols
+        table.each do |row|
+          csv << cols.map{|col|row[col]}
+        end
       end
     end
 
@@ -152,7 +243,7 @@ class ElDorado < Sinatra::Base
     def dotsub buffer, key, value
       buffer
         .gsub("\"{#{key}}\"",quote(value))
-        .gsub("{#{key}}",value.gsub("&", "-aMp-"))
+        .gsub("{#{key}}",value.gsub("&", "&amp;"))
     end
 
     def interpolate_kv(buffer, key, val)
@@ -202,6 +293,41 @@ class ElDorado < Sinatra::Base
       end
     end
 
+    def vistime string
+      return Time.now.to_s if string.nil?
+      return string.to_i if string.match /^\d+$/
+      return string
+    end
+
+    def visplot query
+      if @results.any?
+        columns = @results.first.members.to_a
+        puts columns.inspect
+        return unless start = columns.find_index(:Start)
+        return unless stop = columns.find_index(:Stop)
+        return unless content = columns.find_index(:Content)
+        @timeline = {data: [], groups: nil, options: {}}
+        if group = columns.find_index(:Group)
+          @timeline[:groups] = []
+          @results.each do |row|
+            id = row[group] || 'N/A'
+            @timeline[:groups].push({id: id}) unless @timeline[:groups].include?(({id: id}))
+          end
+        end
+        id = 0
+        @timeline['data'] = @results.map do |row|
+          id += 1
+          {
+            id: id,
+            content: row[content],
+            start: vistime(row[start]),
+            end: vistime(row[stop]),
+            group: (group ? row[group] : 'N/A')
+          }
+        end
+      end
+    end
+
     def has_empty_column?
       @columns.each_with_index do |value, col|
         return true unless @results.map{|row|row[col]}.any?
@@ -211,6 +337,10 @@ class ElDorado < Sinatra::Base
 
     def inputs(query)
       query['query'].scan(/\{([a-z]+)\}/).flatten.sort.uniq
+    end
+
+    def variations(query)
+      (query['variations']||{}).keys
     end
 
     def outputs(query)
@@ -231,16 +361,32 @@ class ElDorado < Sinatra::Base
       nil
     end
 
+    def cypher(query)
+      cypher = @query['query']
+      (@query['variations']||[]).each do |k, v|
+         if @params.include? k
+         cypher.gsub! v['replace'], v['with']
+        end
+      end
+      cypher
+    end
+
     def run slug, query=nil, args=nil
       @query = query || queries[slug]
       @error = nil
 
-      # Prepare required URL params
-      @params = (args||params).select{ |k,_| inputs(@query).include? k }
-      @params.each{|k,v| @params[k] = v.sub(/-aMp-/,'&')}
-      # Run the query
+      unless slug == 'api'
+        # Prepare expected URL params
+        expected = inputs(@query) + variations(@query)
+        @params = (args||params).select{ |k,_| expected.include? k }
+        @params.each { |k,v| @params[k] = v.sub(/-aMp-/,'&') }
+      else
+        @params = args
+      end
+
+      # Run the query variation
       begin
-        @results = neo4j.query(@query['query'], @params)
+        @results = neo4j.query(cypher(@query), @params)
       rescue Exception => e
         @results = []
         @error = e.message
@@ -256,24 +402,26 @@ class ElDorado < Sinatra::Base
     end
 
     def sample_args(query)
-      URI.encode_www_form query['args']||[]
+      URI.encode_www_form eval_sample(query['sample'])||query['args']||[]
     end
 
     def formatted_value(value, column, row=nil)
       if value.nil?
         ''
-      elsif value.kind_of? Array
+      elsif value.kind_of?(Array)
         value.map{|v| formatted_value(v, column, row)}.join("<br/>")
-      elsif value.kind_of? String and value[0]=='[' and json(value)
+      elsif value.kind_of?(String) && value[0]=='[' and json(value)
         formatted_value json(value), column
-      elsif value.kind_of? String and value.match(/^https?:/)
+      elsif value.kind_of?(String) && value.match(/^https?:/)
         link_to_url(value)
-      elsif value.kind_of? Hash
+      elsif value.kind_of?(Hash) && value[:type] == "link"
+        link_to_url(value)
+      elsif value.kind_of?(Hash)
         preserve("<pre>#{value.map{|k,v|"#{k}: #{v}"}.join("\n")}</pre>")
       elsif value.kind_of? Neo4j::Server::CypherNode
         # http://www.rubydoc.info/github/neo4jrb/neo4j-core/Neo4j/Server/CypherNode
         preserve("<pre>#{value.props.map{|k,v|"#{k}: #{v}"}.join("\n")}</pre>")
-      elsif value.kind_of? Neo4j::Server::CypherRelationship
+      elsif value.kind_of?(Neo4j::Server::CypherRelationship)
         # http://www.rubydoc.info/github/neo4jrb/neo4j-core/Neo4j/Server/CypherNode
         preserve("<pre>#{value.props.map{|k,v|"#{k}: #{v}"}.join("\n")}</pre>")
       elsif @targets && !(@targets[column].nil? || @targets[column].empty?)
@@ -286,14 +434,18 @@ class ElDorado < Sinatra::Base
     end
 
     def link_to_url(value)
+      target = value
       kind = case value
+      when Hash then
+        target = value[:href]
+        value[:text]
       when /README/ then 'readme'
       when /docs.google.com/ then 'docs'
       when /\/wiki\// then 'wiki'
       when /\.md/ then 'doc'
       else 'site'
       end
-      "<a href=\"#{value}\" target=_blank>#{kind}</a>"
+      "<a href=\"#{target}\" target=_blank>#{kind}</a>"
     end
 
     def link_to_targets(value, label, target)
@@ -310,7 +462,11 @@ class ElDorado < Sinatra::Base
       forward = places.rotate here||0
       @columns.inject({}) do |res, col|
         want = label(@query,col)
-        there = forward.index { |key| q = inputs(queries[key]); q.size == 1 and q.first == want }
+        there = forward.index do |key|
+          q = inputs(queries[key])
+          (q.size == 1 and q.first == want) or
+          (q.size == 0 and variations(queries[key]).include?(want))
+        end
         if there
           slug_there = forward[there]
           targets = {slug_there => queries[slug_there]}
@@ -351,6 +507,7 @@ class ElDorado < Sinatra::Base
       Open3.popen3(cmd) do |i, o, e, t|
         i.write input
         i.close
+        # STDERR.puts e.read
         result = o.read
       end
       result

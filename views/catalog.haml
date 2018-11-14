@@ -4,22 +4,26 @@
   Column clicks will advance to the next query that takes values from that column as input
 
 %table.table.table-hover
-  - yaml.each do |slug, query|
+  - @yaml.each do |slug, query|
     - if query['query']
-      %tr
-        - params = inputs(query)
-        - output = query['query'].downcase.scan(/\bas (\w+)\b/i).flatten
-        %td
-          %a{href: "/#{slug}?#{sample_args(query)}"}= query['title'] || slug
-        %td{align:'right'}
-          - if not params.empty?
-            (#{params.join ', '})&nbsp;
-        %td
-          ⇒ #{output.join ', '}
-        %td
-          - if query['dot']
-            dot
+      - ([nil]+variations(query)).each do | variation |
+        %tr
+          - params = variation ? inputs(query)+[variation] : inputs(query)
+          - output = query['query'].downcase.scan(/\bas (\w+)\b/i).flatten
+          %td
+            %a{href: "/#{slug}?#{sample_args(query)}"}= query['title'] || slug
+          %td{align:'right'}
+            - if not params.empty?
+              (#{params.join ', '})&nbsp;
+          %td
+            ⇒ #{output.join ', '}
+          %td
+            - if query['dot']
+              dot
     - else
       %tr
         %td{col_span:2}
-          %h3 #{query['title']}
+          %h3
+            #{query['title']}
+            %a{href: "/catalog/#{slug}"}
+              %font{size: 3}= "§"
