@@ -70,8 +70,8 @@ find:
       collect(distinct r.source) as Source
     order by size(Node)
   args:
-    comp: insights
-    regex: '.*insights.*'
+    comp: Alpha
+    regex: '.*alpha.*'
 
 node_detail:
   title: "Node Metadata Detail"
@@ -88,11 +88,8 @@ node_detail:
       type(r) as Relation,
       collect(distinct r.source) as Source
     order by Count desc
-  args:
-    label: PERSON
-  alias:
-    Nodes: label
-    Relation: type
+  sample: "match (n) where rand()<0.01 return head(labels(n)) as label limit 1"
+
 
 relation_detail:
   title: "Relation Metadata Detail"
@@ -105,12 +102,7 @@ relation_detail:
       collect(distinct head(labels(b))) as That,
       count(r) as Count,
       collect(distinct r.source) as Source
-  args:
-    type: ARCHITECT
-  alias:
-    This: label
-    Relation: type
-    That: label
+  sample: 'match ()-[r]->() where rand()<0.01 return type(r) as type limit 1'
 
 label_name_detail:
   title: Named Node and Metadata Details
@@ -242,8 +234,7 @@ source_explain:
       Type,
       e.description as Description,
       e.links as Links
-  args:
-    source: confluence
+  sample: "match (n:EXPLAIN) return n.name as source limit 1"
 
 rules:
   title: "Rules Mapping INSTANCE to SERVICE"
@@ -270,8 +261,7 @@ rules_detail:
       t.name as Team,
       a.name as Architect
     order by Team
-  args:
-    rule: partial tm
+  sample: 'match ()-[r]->() where exists(r.rule) and rand()<0.05 return r.rule as rule limit 1'
 
 links:
   title: "Collected Links for all Nodes"
