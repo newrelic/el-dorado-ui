@@ -237,30 +237,24 @@ source_explain:
   sample: "match (n:EXPLAIN) return n.name as source limit 1"
 
 rules:
-  title: "Rules Mapping INSTANCE to SERVICE"
+  title: "Rules Used to Resolve Relations"
   query: |
-    match (i:INSTANCE)-[r:IMPLEMENTS]->(s:SERVICE)
-    optional match (s)<--(t:TEAM)
+    match (i)-[r]->(s) where exists(r.rule)
     return
+      type(r) as Type,
       r.rule as Rule,
-      count(distinct i.name + " ⇒ " + s.name) as Matches,
-      count(distinct t.name) as Teams
+      count(distinct i.name + " ⇒ " + s.name) as Matches
     order by Matches desc
 
 rules_detail:
-  title: "Rule Details, Mapping INSTANCE to SERVICE"
+  title: "Relations Resolved by a Specific Rule"
   query: |
-    match (i:INSTANCE)-[r:IMPLEMENTS]->(s:SERVICE)
+    match (i)-[r{rule:{rule}}]->(s)
     where r.rule = {rule}
-    optional match (s)<--(t:TEAM)
-    optional match (t)-[:ARCHITECT]->(a:PERSON)
     return
-      r.rule as Rule,
-      s.name as Service,
-      collect(distinct i.name) as Instance,
-      t.name as Team,
-      a.name as Architect
-    order by Team
+      type(r) as Relation,
+      collect(distinct i.name)[0..20] as From,
+      collect(distinct s.name)[0..20] as To
   sample: 'match ()-[r]->() where exists(r.rule) and rand()<0.05 return r.rule as rule limit 1'
 
 links:
