@@ -30,10 +30,29 @@
       max-width:500px;
     }
     .editable {
+      position: relative;
       cursor: pointer;
+      height: 100px;
+    }
+    .editable:after {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      content: "";
+      background: linear-gradient(to top,
+        rgba(255,255,255, 1),
+        rgba(255,255,255, 0)
+      );
+      pointer-events: none; /* so the text is still selectable */
     }
     .editable:focus {
       cursor: auto;
+      height: 100%;
+    }
+    .editable:focus:after {
+      background: rgba(255,255,255, 0);
     }
 
 
