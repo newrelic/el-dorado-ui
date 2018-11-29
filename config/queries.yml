@@ -70,8 +70,8 @@ find:
       collect(distinct r.source) as Source
     order by size(Node)
   args:
-    comp: insights
-    regex: '.*insights.*'
+    comp: Alpha
+    regex: '.*alpha.*'
 
 node_detail:
   title: "Node Metadata Detail"
@@ -88,11 +88,8 @@ node_detail:
       type(r) as Relation,
       collect(distinct r.source) as Source
     order by Count desc
-  args:
-    label: PERSON
-  alias:
-    Nodes: label
-    Relation: type
+  sample: "match (n) where rand()<0.01 return head(labels(n)) as label limit 1"
+
 
 relation_detail:
   title: "Relation Metadata Detail"
@@ -105,12 +102,7 @@ relation_detail:
       collect(distinct head(labels(b))) as That,
       count(r) as Count,
       collect(distinct r.source) as Source
-  args:
-    type: ARCHITECT
-  alias:
-    This: label
-    Relation: type
-    That: label
+  sample: 'match ()-[r]->() where rand()<0.01 return type(r) as type limit 1'
 
 label_name_detail:
   title: Named Node and Metadata Details
@@ -137,60 +129,76 @@ schema_with_sources:
     and the sources from which we have extracted this information (dotted lines).
   query: |
     match (n)-[r]->(m)
-    return distinct
+    with distinct
+      '.*' as Regex,
+      count(r) as Count,
       r.source as Source,
       type(r) as Type,
       head(labels(n)) as From,
       head(labels(m)) as To
+    return *, case when From in ['MMF','TEAM','PERSON','REPO','SERVICE','INSTANCE','INCIDENT'] then From end as Special
     order by Source
   dot: |
     strict digraph {
       rankdir=LR
       node [shape=box style=filled, fillcolor=palegreen]
-      "{Source}" [shape=plaintext fillcolor=white URL="/source_explain?source={Source}"]
-      "{From}" [URL="/schema_node_detail?label={From}"]
-      "{To}" [URL="/schema_node_detail?label={To}"]
-      "{Type}{To}" [label="{Type}" shape=plaintext fillcolor=white]
-      "{From}" -> "{Type}{To}"
-      "{Type}{To}" -> "{To}"
-      "{Source}" -> "{Type}{To}" [style=dotted arrowhead=none]
+      "{Special}" [fillcolor=gold]
+      "{Source}" [shape=plaintext fillcolor=white URL="/schema_with_sources?source={Source}"]
+      "{From}" [URL="/schema_with_sources?label={From}"]
+      "{To}" [URL="/schema_with_sources?label={To}"]
+      "{From}{Type}{To}" [label="{Type}" shape=plaintext fillcolor=white]
+      "{From}" -> "{From}{Type}{To}"
+      "{From}{Type}{To}" -> "{To}"
+      "{Source}" -> "{From}{Type}{To}" [style=dotted arrowhead=none label={Count} fontcolor=gray URL="/sample_relations?source={Source}&type={Type}&from={From}&to={To}&count={Count}&regex={Regex}"]
     }
+  variations:
+    label:
+      replace: |
+        match (n)-[r]->(m)
+      with: |
+        match (n)-[r]->(m)
+        where (head(labels(n)) = {label}) or (head(labels(m)) = {label})
+    source:
+      replace: |
+        match (n)-[r]->(m)
+      with: |
+        match (n)-[r {source:{source}}]->(m)
+    regex:
+      replace: |
+        with distinct
+          '.*' as Regex,
+      with: |
+        where toLower(n.name) =~ {regex} or toLower(m.name) =~ {regex}
+        with distinct
+          {regex} as Regex,
   alias:
     From: label
     To: label
 
-schema_node_detail:
-  title: "Schema Related to a Node"
+sample_relations:
+  title: "Sample Nodes and their Relations"
   description: >
-    We show here nodes related to one particular node (green boxes),
-    the relations we've discovered between them (solid lines),
-    and the sources from which we have extracted this information (dotted lines).
+    We examine specific nodes and relations from a specific source.
+    If we expect more than 100 of these combinations then we will randomly sample to show about 100.
+    When muliple sources create the same relation, we merge attributes possibly favoring one or another source.
   query: |
     match (n)-[r]->(m)
-    where (head(labels(n)) = {label}) or (head(labels(m)) = {label})
-    return distinct
-      r.source as Source,
-      type(r) as Type,
-      head(labels(n)) as From,
-      head(labels(m)) as To
-    order by Source
-  args:
-    label: TEAM
-  alias:
-    From: label
-    To: label
-  dot: |
-    strict digraph {
-      rankdir=LR
-      node [shape=box style=filled, fillcolor=palegreen]
-      "{Source}" [shape=plaintext fillcolor=white URL="/source_explain?source={Source}"]
-      "{From}" [URL="/schema_node_detail?label={From}"]
-      "{To}" [URL="/schema_node_detail?label={To}"]
-      "{Type}{To}" [label="{Type}" shape=plaintext fillcolor=white]
-      "{From}" -> "{Type}{To}"
-      "{Type}{To}" -> "{To}"
-      "{Source}" -> "{Type}{To}" [style=dotted arrowhead=none]
-    }
+    where
+      head(labels(n)) = {from} and
+      head(labels(m)) = {to} and
+      type(r) = {type} and
+      r.source = {source} and
+      rand() < 100.0/toInt({count})
+    return
+      [{from},n] as From,
+      [{type},r] as Type,
+      [{to},m] as To
+  variations:
+    regex:
+      replace: |
+        where
+      with: |
+        where (toLower(n.name) =~ {regex} or toLower(m.name) =~ {regex}) and
 
 sources:
   title: Sources Overview
@@ -226,36 +234,28 @@ source_explain:
       Type,
       e.description as Description,
       e.links as Links
-  args:
-    source: confluence
+  sample: "match (n:EXPLAIN) return n.name as source limit 1"
 
 rules:
-  title: "Rules Mapping INSTANCE to SERVICE"
+  title: "Rules Used to Resolve Relations"
   query: |
-    match (i:INSTANCE)-[r:IMPLEMENTS]->(s:SERVICE)
-    optional match (s)<--(t:TEAM)
+    match (i)-[r]->(s) where exists(r.rule)
     return
+      type(r) as Type,
       r.rule as Rule,
-      count(distinct i.name + " ⇒ " + s.name) as Matches,
-      count(distinct t.name) as Teams
+      count(distinct i.name + " ⇒ " + s.name) as Matches
     order by Matches desc
 
 rules_detail:
-  title: "Rule Details, Mapping INSTANCE to SERVICE"
+  title: "Relations Resolved by a Specific Rule"
   query: |
-    match (i:INSTANCE)-[r:IMPLEMENTS]->(s:SERVICE)
+    match (i)-[r{rule:{rule}}]->(s)
     where r.rule = {rule}
-    optional match (s)<--(t:TEAM)
-    optional match (t)-[:ARCHITECT]->(a:PERSON)
     return
-      r.rule as Rule,
-      s.name as Service,
-      collect(distinct i.name) as Instance,
-      t.name as Team,
-      a.name as Architect
-    order by Team
-  args:
-    rule: partial tm
+      type(r) as Relation,
+      collect(distinct i.name)[0..20] as From,
+      collect(distinct s.name)[0..20] as To
+  sample: 'match ()-[r]->() where exists(r.rule) and rand()<0.05 return r.rule as rule limit 1'
 
 links:
   title: "Collected Links for all Nodes"

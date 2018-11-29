@@ -26,7 +26,14 @@
 
 - if @svg
   %a{href:'#', class:'svg'}
-  %embed{style: 'max-width: 100%', src: "data:image/svg+xml;utf8,#{@svg}"}
+  %embed{style: 'max-width: 100%', src: "data:image/svg+xml;utf8,#{URI.encode(@svg)}"}
+
+- if @timeline
+  %div{id: 'visjs'}
+  %script{:type=>"text/javascript"}
+    var container = document.getElementById('visjs')
+    var timeline = #{@timeline.to_json}
+    new vis.Timeline(container, timeline.data, timeline.groups, timeline.options)
 
 - if @results && @results.first
   - rows = 0
