@@ -2,7 +2,7 @@
 source "https://rubygems.org"
 
 gem 'sinatra', require: 'sinatra/base'
-gem 'puma'
+gem 'puma', '>= 3.12.2'
 
 gem 'neo4j', '>= 8.2.1'
 gem 'neo4j-core', '>= 7.2.3'

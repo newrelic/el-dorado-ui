@@ -49,8 +49,10 @@ GEM
       net_tcp_client (>= 2.0.1)
       typhoeus (>= 1.1.2)
     net_tcp_client (2.2.0)
+    nio4r (2.5.2)
     orm_adapter (0.5.0)
-    puma (3.10.0)
+    puma (4.3.1)
+      nio4r (~> 2.0)
     rack (2.0.6)
     rack-protection (2.0.4)
       rack
@@ -83,7 +85,7 @@ DEPENDENCIES
   haml
   neo4j (>= 8.2.1)
   neo4j-core (>= 7.2.3)
-  puma
+  puma (>= 3.12.2)
   sinatra
   sinatra-contrib
 
