@@ -24,6 +24,8 @@ You can then visit the app at http://localhost:9292
 
 We assume the `dot` command is available from [Graphviz](http://www.graphviz.org/).
 
+> `brew install graphviz`
+
 If you are not running your own instance of Neo4J locally, you'll need to alter
 the database connection string with the GRAPHDBURL environment variable.
 
@@ -34,4 +36,4 @@ GRAPHDBURL='http://neo4j:neo4j@example.com:7474/' bundler exec rackup -o '0.0.0.
 
 ## License
 
-Copyright [2017] New Relic, Inc.  Licensed under the Apache License, version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at [apache.org](http://www.apache.org/licenses/LICENSE-2.0). Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, either express or implied. 
+Copyright [2020] New Relic, Inc.  Licensed under the Apache License, version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at [apache.org](http://www.apache.org/licenses/LICENSE-2.0). Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, either express or implied.
