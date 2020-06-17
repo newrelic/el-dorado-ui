@@ -55,7 +55,7 @@ GEM
     nio4r (2.5.2)
     orm_adapter (0.5.0)
     os (1.1.0)
-    puma (4.3.3)
+    puma (4.3.5)
       nio4r (~> 2.0)
     rack (2.0.8)
     rack-protection (2.0.8)
@@ -91,7 +91,7 @@ DEPENDENCIES
   haml
   neo4j (= 8.2.1)
   neo4j-core (= 7.2.3)
-  puma (= 4.3.3)
+  puma (= 4.3.5)
   sinatra (= 2.0.8)
   sinatra-contrib
 
